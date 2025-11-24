@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PC Inventory & Builder</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; color: #333; transition: background 0.3s, color 0.3s; }
+body.dark { background: #121212; color: #eee; }
+h1 { text-align: center; }
+.section { background: white; padding: 20px; margin-bottom: 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: background 0.3s, color 0.3s; }
+body.dark .section { background: #1e1e1e; color: #eee; }
+input, select { width: 100%; padding: 8px; margin: 8px 0; border-radius: 5px; border: 1px solid #aaa; background: inherit; color: inherit; }
+button { padding: 10px 15px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 16px; box-shadow: 0 0 10px #2196F3; transition: 0.3s; }
+button:hover { background: #1976D2; box-shadow: 0 0 20px #1976D2; }
+.btn-red { background: #d9534f; box-shadow: 0 0 10px #d9534f; }
+.btn-red:hover { background: #c9302c; box-shadow: 0 0 20px #c9302c; }
+.topbar { display: flex; justify-content: space-between; margin-bottom: 20px; }
+ul { list-style: none; padding: 0; }
+li { background: #eee; padding: 10px; margin: 6px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+body.dark li { background: #2b2b2b; }
+.itemText { flex-grow: 1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<button id="darkModeBtn">Toggle Dark Mode</button>
+</div>
+
+<h1>PC Inventory Manager + PC Builder</h1>
+
+<!-- ADD INVENTORY -->
+<div class="section">
+<h2>Add Inventory Item</h2>
+<form id="inventoryForm">
+Name: <input type="text" id="name" required>
+Type (CPU, GPU, RAM, Motherboard, Storage, PSU, Case): <input type="text" id="type" required>
+Price (€): <input type="number" id="price" required>
+Quantity: <input type="number" id="qty" required>
+<button type="submit">Add to Inventory</button>
+</form>
+</div>
+
+<!-- INVENTORY TOOLS -->
+<div class="section">
+<h2>Inventory Tools</h2>
+<input type="text" id="searchBar" placeholder="Search inventory...">
+<label>Sort By:</label>
+<select id="sortSelect">
+<option value="name">Name (A–Z)</option>
+<option value="priceAsc">Price (Low → High)</option>
+<option value="priceDesc">Price (High → Low)</option>
+<option value="type">Type</option>
+</select>
+<button id="exportCSV">Export Inventory CSV</button>
+<button id="exportBuildCSV">Export Build History CSV</button>
+<button id="exportJSON">Backup JSON</button>
+<button id="importJSON" class="btn-red">Import JSON</button>
+<input type="file" id="importFile" style="display:none;">
+</div>
+
+<!-- INVENTORY LIST -->
+<div class="section">
+<h2>Current Inventory</h2>
+<ul id="inventoryList"></ul>
+</div>
+
+<!-- PC BUILDER -->
+<div class="section">
+<h2>Build a PC</h2>
+<label>CPU</label><select id="cpuSelect"></select>
+<label>GPU (MANDATORY)</label><select id="gpuSelect"></select>
+<label>RAM</label><select id="ramSelect"></select>
+<label>Motherboard</label><select id="mbSelect"></select>
+<label>Storage</label><select id="storageSelect"></select>
+<label>PSU (MANDATORY)</label><select id="psuSelect"></select>
+<label>Case</label><select id="caseSelect"></select>
+<h3>Total Cost: €<span id="totalCost">0</span></h3>
+<label>Selling Price (€)</label>
+<input type="number" id="sellPrice">
+<h3>Profit: €<span id="profit">0</span> | <span id="profitPercent">0</span>%</h3>
+<button id="finalizeBuild">Finalize Build</button>
+</div>
+
+<!-- BUILD HISTORY -->
+<div class="section">
+<h2>Previous Builds</h2>
+<ul id="buildHistory"></ul>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyAh15X2AapF1XFWtvNzcIYwsfe12Exu9XQ",
+authDomain: "pc-parts-inventory-67299.firebaseapp.com",
+projectId: "pc-parts-inventory-67299",
+storageBucket: "pc-parts-inventory-67299.firebasestorage.app",
+messagingSenderId: "555094990634",
+appId: "1:555094990634:web:b33e00e8989d459048c853",
+measurementId: "G-H4H06KX5MH"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const invList = document.getElementById("inventoryList");
+const buildHistory = document.getElementById("buildHistory");
+const selects = {
+CPU: document.getElementById("cpuSelect"),
+GPU: document.getElementById("gpuSelect"),
+RAM: document.getElementById("ramSelect"),
+Motherboard: document.getElementById("mbSelect"),
+Storage: document.getElementById("storageSelect"),
+PSU: document.getElementById("psuSelect"),
+Case: document.getElementById("caseSelect")
+};
+let fullInventory = [];
+
+const darkBtn = document.getElementById("darkModeBtn");
+if(localStorage.getItem("darkMode") === "true") document.body.classList.add("dark");
+darkBtn.onclick = () => { document.body.classList.toggle("dark"); localStorage.setItem("darkMode", document.body.classList.contains("dark")); }
+
+// Load inventory from Firestore
+async function loadInventory(){
+const snap = await getDocs(collection(db,"inventory"));
+fullInventory = [];
+snap.forEach(d=>fullInventory.push({id:d.id,...d.data()}));
+updateInventoryDisplay();
+populateDropdowns();
+checkCategoryLowStock();
+}
+
+// Display inventory
+function updateInventoryDisplay(){
+const search = document.getElementById("searchBar").value.toLowerCase();
+const sortType = document.getElementById("sortSelect").value;
+let list = fullInventory.filter(i=>i.name.toLowerCase().includes(search)||i.type.toLowerCase().includes(search));
+if(sortType==="priceAsc") list.sort((a,b)=>a.price-b.price);
+if(sortType==="priceDesc") list.sort((a,b)=>b.price-a.price);
+if(sortType==="name") list.sort((a,b)=>a.name.localeCompare(b.name));
+if(sortType==="type") list.sort((a,b)=>a.type.localeCompare(b.type));
+invList.innerHTML="";
+list.forEach(item=>{
+const li=document.createElement("li");
+const span=document.createElement("span");
+span.classList.add("itemText");
+span.textContent=`${item.name} (${item.type}) — €${item.price} — Qty: ${item.qty}`;
+const delBtn=document.createElement("button");
+delBtn.classList.add("btn-red");
+delBtn.textContent="Delete";
+delBtn.onclick=async()=>{ await deleteDoc(doc(db,"inventory",item.id)); loadInventory(); }
+li.appendChild(span);
+li.appendChild(delBtn);
+invList.appendChild(li);
+});
+}
+
+// Check low stock by category (<2 items in category)
+function checkCategoryLowStock() {
+const categories = ["CPU","GPU","RAM","Motherboard","Storage","PSU","Case"];
+categories.forEach(cat => {
+const itemsInCategory = fullInventory.filter(i => i.type === cat && i.qty > 0);
+if(itemsInCategory.length < 2) {
+console.warn(`⚠ Low stock in category: ${cat}`);
+}
+});
+}
+
+// Populate dropdowns
+function populateDropdowns(){
+for(const cat in selects) selects[cat].innerHTML=`<option value="none">None</option>`;
+fullInventory.forEach(item=>{
+if(selects[item.type]){
+const opt=document.createElement("option");
+opt.value=JSON.stringify(item);
+opt.textContent=`${item.name} (€${item.price})`;
+selects[item.type].appendChild(opt);
+}
+});
+Object.values(selects).forEach(sel=>{
+sel.addEventListener("change", () => {
+if(sel.value !== "none") {
+const part = JSON.parse(sel.value);
+const categoryItems = fullInventory.filter(i => i.type === part.type && i.qty > 0);
+if(categoryItems.length < 2) {
+alert(`⚠ Warning: Low stock in category ${part.type} (less than 2 items available)`);
+}
+}
+calculateTotals();
+});
+});
+calculateTotals();
+}
+
+// Add inventory
+document.getElementById("inventoryForm").addEventListener("submit",async e=>{
+e.preventDefault();
+const data={
+name:document.getElementById("name").value,
+type:document.getElementById("type").value,
+price:Number(document.getElementById("price").value),
+qty:Number(document.getElementById("qty").value)
+};
+await addDoc(collection(db,"inventory"),data);
+alert("Item added!");
+e.target.reset();
+loadInventory();
+});
+
+// Calculate cost & profit
+function calculateTotals(){
+let total=0;
+for(const cat in selects){
+if(selects[cat].value!=="none"){ total+=JSON.parse(selects[cat].value).price; }
+}
+document.getElementById("totalCost").textContent=total;
+const sell=Number(document.getElementById("sellPrice").value);
+if(sell>0){
+const profit=sell-total;
+document.getElementById("profit").textContent=profit;
+document.getElementById("profitPercent").textContent=((profit/total)*100).toFixed(1);
+}
+}
+document.getElementById("sellPrice").addEventListener("input",calculateTotals);
+
+// Finalize build
+document.getElementById("finalizeBuild").addEventListener("click",async()=>{
+const mandatory=["CPU","GPU","RAM","Motherboard","Storage","PSU"];
+for(const cat of mandatory){
+if(selects[cat].value==="none"){ alert(`Missing required component: ${cat}`); return; }
+}
+let partsUsed=[];
+for(const cat in selects){
+if(selects[cat].value !== "none") {
+const item=JSON.parse(selects[cat].value);
+if(item.qty<=0){ alert(`${item.name} is out of stock!`); return; }
+partsUsed.push(item);
+}
+}
+for(const part of partsUsed){
+await updateDoc(doc(db,"inventory",part.id),{ qty: part.qty-1 });
+}
+const cost=Number(document.getElementById("totalCost").textContent);
+const sell=Number(document.getElementById("sellPrice").value);
+await addDoc(collection(db,"builds"),{ date:new Date().toLocaleString(), parts:partsUsed, cost, sellPrice:sell, profit:sell-cost });
+alert("Build completed and saved!");
+loadInventory();
+loadBuildHistory();
+});
+
+// Load build history
+async function loadBuildHistory(){
+const snap=await getDocs(collection(db,"builds"));
+buildHistory.innerHTML="";
+snap.forEach(d=>{
+const b=d.data();
+const li=document.createElement("li");
+li.innerHTML=`<strong>${b.date}</strong><br>Cost: €${b.cost} | Sold for: €${b.sellPrice}<br>Profit: €${b.profit}<br>Parts: ${b.parts.map(p=>p.name).join(", ")}`;
+buildHistory.appendChild(li);
+});
+}
+
+// Export / Import
+document.getElementById("exportCSV").onclick=()=>{ let csv="Name,Type,Price,Quantity\n"; fullInventory.forEach(i=>csv+=`${i.name},${i.type},${i.price},${i.qty}\n`); download("inventory.csv",csv); }
+document.getElementById("exportBuildCSV").onclick=async()=>{ const snap=await getDocs(collection(db,"builds")); let csv="Date,Cost,Sell Price,Profit,Parts\n"; snap.forEach(d=>{ const b=d.data(); csv+=`${b.date},${b.cost},${b.sellPrice},${b.profit},"${b.parts.map(p=>p.name).join("; ")}"\n`; }); download("builds.csv",csv); }
+function download(filename,text){ const blob=new Blob([text],{type:"text/csv"}); const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download=filename; link.click(); }
+document.getElementById("exportJSON").onclick=async()=>{
+const buildsSnap=await getDocs(collection(db,"builds"));
+let builds=[]; buildsSnap.forEach(d=>builds.push({id:d.id,...d.data()}));
+const backup={ inventory: fullInventory, builds };
+const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
+const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download="backup.json"; link.click();
+}
+document.getElementById("importJSON").onclick=()=>{ document.getElementById("importFile").click(); }
+document.getElementById("importFile").addEventListener("change",async e=>{
+const text=await e.target.files[0].text();
+const backup=JSON.parse(text);
+for(const item of backup.inventory){ await updateDoc(doc(db,"inventory",item.id),item); }
+alert("Backup imported!"); loadInventory(); loadBuildHistory();
+});
+
+loadInventory(); loadBuildHistory();
+</script>
+</body>
+</html>
