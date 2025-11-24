@@ -1,67 +1,78 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PC Inventory & Builder</title>
+<title>Ultimate PC Inventory & Builder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; color: #333; transition: background 0.3s, color 0.3s; }
+body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 10px; color: #333; transition: background 0.3s, color 0.3s; }
 body.dark { background: #121212; color: #eee; }
-h1 { text-align: center; }
-.section { background: white; padding: 20px; margin-bottom: 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: background 0.3s, color 0.3s; }
+h1 { text-align: center; font-size: 1.8rem; margin-bottom: 20px; }
+.section { background: white; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: background 0.3s, color 0.3s; }
 body.dark .section { background: #1e1e1e; color: #eee; }
-input, select { width: 100%; padding: 8px; margin: 8px 0; border-radius: 5px; border: 1px solid #aaa; background: inherit; color: inherit; }
+input, select { width: 100%; padding: 8px; margin: 6px 0; border-radius: 5px; border: 1px solid #aaa; background: inherit; color: inherit; }
 button { padding: 10px 15px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 16px; box-shadow: 0 0 10px #2196F3; transition: 0.3s; }
 button:hover { background: #1976D2; box-shadow: 0 0 20px #1976D2; }
 .btn-red { background: #d9534f; box-shadow: 0 0 10px #d9534f; }
-.btn-red:hover { background: #c9302c; box-shadow: 0 0 20px #c9302c; }
-.topbar { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.btn-red:hover { box-shadow: 0 0 20px #c9302c; }
+.topbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-bottom: 20px; }
 ul { list-style: none; padding: 0; }
-li { background: #eee; padding: 10px; margin: 6px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+li { background: #eee; padding: 10px; margin: 6px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 body.dark li { background: #2b2b2b; }
-.itemText { flex-grow: 1; display:flex; align-items:center; gap:10px; }
+.itemText { flex-grow: 1; display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
 .qtyInput { width: 60px; margin-left: 5px; }
+.selectedItem { display:flex; align-items:center; gap:10px; margin-bottom:5px; flex-wrap: wrap; }
+label { font-weight: bold; }
+.builderGroup { margin-bottom: 15px; }
+.lowStock { color: red; font-weight: bold; }
+.subtotal { font-weight: bold; margin-top: 5px; }
+.maxBuilds { font-weight: bold; margin-top: 10px; }
+.plusMinusBtn { padding: 2px 6px; margin: 0 2px; cursor: pointer; }
+@media(max-width:600px){
+  .topbar { flex-direction: column; }
+  button { width: 100%; }
+}
 </style>
 </head>
 <body>
 
 <div class="topbar">
 <button id="darkModeBtn">Toggle Dark Mode</button>
+<input type="text" id="searchBar" placeholder="Search inventory...">
+<select id="sortSelect">
+<option value="name">Sort Name (A–Z)</option>
+<option value="priceAsc">Price Low → High</option>
+<option value="priceDesc">Price High → Low</option>
+<option value="type">Sort Type</option>
+</select>
+<button id="exportCSV">Export Inventory CSV</button>
+<button id="exportBuildCSV">Export Build CSV</button>
+<button id="exportJSON">Backup JSON</button>
+<button id="importJSON" class="btn-red">Import JSON</button>
+<input type="file" id="importFile" style="display:none;">
+<button onclick="undo()">Undo</button>
+<button onclick="redo()">Redo</button>
 </div>
 
-<h1>PC Inventory Manager + PC Builder</h1>
+<h1>Ultimate PC Inventory Manager + PC Builder</h1>
 
 <!-- ADD INVENTORY -->
 <div class="section">
 <h2>Add Inventory Item</h2>
 <form id="inventoryForm">
-Name: <input type="text" id="name" required>
-Type (CPU, GPU, RAM, Motherboard, Storage, PSU, Case, Extras): <input type="text" id="type" required>
-Price (€): <input type="number" id="price" required>
-Quantity: <input type="number" id="qty" required>
-<button type="submit">Add to Inventory</button>
+<label>Name:</label>
+<input type="text" id="name" required>
+<label>Type (CPU, GPU, RAM, Motherboard, Storage, PSU, Case, Extras):</label>
+<input type="text" id="type" required>
+<label>Price (€):</label>
+<input type="number" id="price" required>
+<label>Quantity:</label>
+<input type="number" id="qty" required>
+<button type="submit">Add Item</button>
 </form>
 </div>
 
-<!-- INVENTORY TOOLS -->
-<div class="section">
-<h2>Inventory Tools</h2>
-<input type="text" id="searchBar" placeholder="Search inventory...">
-<label>Sort By:</label>
-<select id="sortSelect">
-<option value="name">Name (A–Z)</option>
-<option value="priceAsc">Price (Low → High)</option>
-<option value="priceDesc">Price (High → Low)</option>
-<option value="type">Type</option>
-</select>
-<button id="exportCSV">Export Inventory CSV</button>
-<button id="exportBuildCSV">Export Build History CSV</button>
-<button id="exportJSON">Backup JSON</button>
-<button id="importJSON" class="btn-red">Import JSON</button>
-<input type="file" id="importFile" style="display:none;">
-</div>
-
-<!-- INVENTORY LIST -->
+<!-- CURRENT INVENTORY -->
 <div class="section">
 <h2>Current Inventory</h2>
 <ul id="inventoryList"></ul>
@@ -70,15 +81,9 @@ Quantity: <input type="number" id="qty" required>
 <!-- PC BUILDER -->
 <div class="section">
 <h2>Build a PC</h2>
-<label>CPU</label><select id="cpuSelect" multiple></select>
-<label>GPU</label><select id="gpuSelect" multiple></select>
-<label>RAM</label><select id="ramSelect" multiple></select>
-<label>Motherboard</label><select id="mbSelect" multiple></select>
-<label>Storage</label><select id="storageSelect" multiple></select>
-<label>PSU</label><select id="psuSelect" multiple></select>
-<label>Case</label><select id="caseSelect" multiple></select>
-<label>Extras</label><select id="extrasSelect" multiple></select>
+<div id="builderContainer"></div>
 <h3>Total Cost: €<span id="totalCost">0</span></h3>
+<h3>Maximum Builds Possible: <span id="maxBuilds">0</span></h3>
 <label>Selling Price (€)</label>
 <input type="number" id="sellPrice">
 <h3>Profit: €<span id="profit">0</span> | <span id="profitPercent">0</span>%</h3>
@@ -96,188 +101,240 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebas
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyAh15X2AapF1XFWtvNzcIYwsfe12Exu9XQ",
-authDomain: "pc-parts-inventory-67299.firebaseapp.com",
-projectId: "pc-parts-inventory-67299",
-storageBucket: "pc-parts-inventory-67299.firebasestorage.app",
-messagingSenderId: "555094990634",
-appId: "1:555094990634:web:b33e00e8989d459048c853",
-measurementId: "G-H4H06KX5MH"
+  apiKey: "AIzaSyAh15X2AapF1XFWtvNzcIYwsfe12Exu9XQ",
+  authDomain: "pc-parts-inventory-67299.firebaseapp.com",
+  projectId: "pc-parts-inventory-67299",
+  storageBucket: "pc-parts-inventory-67299.firebasestorage.app",
+  messagingSenderId: "555094990634",
+  appId: "1:555094990634:web:b33e00e8989d459048c853",
+  measurementId: "G-H4H06KX5MH"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const invList = document.getElementById("inventoryList");
-const buildHistory = document.getElementById("buildHistory");
-
-const selects = {
-CPU: document.getElementById("cpuSelect"),
-GPU: document.getElementById("gpuSelect"),
-RAM: document.getElementById("ramSelect"),
-Motherboard: document.getElementById("mbSelect"),
-Storage: document.getElementById("storageSelect"),
-PSU: document.getElementById("psuSelect"),
-Case: document.getElementById("caseSelect"),
-Extras: document.getElementById("extrasSelect")
-};
-
 let fullInventory = [];
-
+const builderComponents = ["CPU","GPU","RAM","Motherboard","Storage","PSU","Case","Extras"];
+const builderContainer = document.getElementById("builderContainer");
+const buildHistory = document.getElementById("buildHistory");
 const darkBtn = document.getElementById("darkModeBtn");
-if(localStorage.getItem("darkMode") === "true") document.body.classList.add("dark");
+
+// Undo/Redo
+let undoStack=[], redoStack=[];
+function saveStateForUndo(){ undoStack.push(JSON.parse(JSON.stringify(fullInventory))); if(undoStack.length>50) undoStack.shift(); redoStack=[]; }
+function undo(){ if(!undoStack.length) return alert("Nothing to undo"); redoStack.push(JSON.parse(JSON.stringify(fullInventory))); fullInventory=undoStack.pop(); updateInventoryDisplay(); populateBuilder(); }
+function redo(){ if(!redoStack.length) return alert("Nothing to redo"); undoStack.push(JSON.parse(JSON.stringify(fullInventory))); fullInventory=redoStack.pop(); updateInventoryDisplay(); populateBuilder(); }
+
+// Dark Mode
+if(localStorage.getItem("darkMode")==="true") document.body.classList.add("dark");
 darkBtn.onclick = () => { document.body.classList.toggle("dark"); localStorage.setItem("darkMode", document.body.classList.contains("dark")); }
 
-// Load inventory
+// Load Inventory
 async function loadInventory(){
-const snap = await getDocs(collection(db,"inventory"));
-fullInventory = [];
-snap.forEach(d=>fullInventory.push({id:d.id,...d.data()}));
-updateInventoryDisplay();
-populateDropdowns();
-checkCategoryLowStock();
+  const snap = await getDocs(collection(db,"inventory"));
+  fullInventory=[];
+  snap.forEach(d=>fullInventory.push({id:d.id,...d.data()}));
+  updateInventoryDisplay();
+  populateBuilder();
+  loadBuildHistory();
+  checkLowStock();
 }
 
-// Display inventory
+// Display Inventory
 function updateInventoryDisplay(){
-const search = document.getElementById("searchBar").value.toLowerCase();
-const sortType = document.getElementById("sortSelect").value;
-let list = fullInventory.filter(i=>i.name.toLowerCase().includes(search) || i.type.toLowerCase().includes(search));
-if(sortType==="priceAsc") list.sort((a,b)=>a.price-b.price);
-if(sortType==="priceDesc") list.sort((a,b)=>b.price-a.price);
-if(sortType==="name") list.sort((a,b)=>a.name.localeCompare(b.name));
-if(sortType==="type") list.sort((a,b)=>a.type.localeCompare(b.type));
+  const invList = document.getElementById("inventoryList");
+  invList.innerHTML="";
+  const search = document.getElementById("searchBar").value.toLowerCase();
+  const sortType = document.getElementById("sortSelect").value;
+  let filtered = fullInventory.filter(i=>i.name.toLowerCase().includes(search) || i.type.toLowerCase().includes(search));
+  if(sortType==="priceAsc") filtered.sort((a,b)=>a.price-b.price);
+  if(sortType==="priceDesc") filtered.sort((a,b)=>b.price-a.price);
+  if(sortType==="name") filtered.sort((a,b)=>a.name.localeCompare(b.name));
+  if(sortType==="type") filtered.sort((a,b)=>a.type.localeCompare(b.type));
 
-invList.innerHTML="";
-list.forEach(item=>{
-const li = document.createElement("li");
-const span = document.createElement("span");
-span.classList.add("itemText");
-span.innerHTML = `${item.name} (${item.type}) — €${item.price} — Qty: ${item.qty}`;
-
-const qtyInput = document.createElement("input");
-qtyInput.type = "number";
-qtyInput.value = item.qty;
-qtyInput.style.width = "60px";
-qtyInput.addEventListener("change", async ()=>{
-let newQty = Number(qtyInput.value);
-if(newQty<0) newQty=0;
-await updateDoc(doc(db,"inventory",item.id), { qty: newQty });
-loadInventory();
-});
-
-const delBtn = document.createElement("button");
-delBtn.classList.add("btn-red");
-delBtn.textContent = "Delete";
-delBtn.onclick = async()=>{ await deleteDoc(doc(db,"inventory",item.id)); loadInventory(); }
-
-span.appendChild(qtyInput);
-li.appendChild(span);
-li.appendChild(delBtn);
-invList.appendChild(li);
-});
+  filtered.forEach(item=>{
+    const li = document.createElement("li");
+    const span = document.createElement("span"); span.classList.add("itemText");
+    const lowStockClass = item.qty<=2 ? 'lowStock' : '';
+    span.innerHTML = `<span class="${lowStockClass}">${item.name} (${item.type}) — €${item.price} — Qty: </span>`;
+    const qtyInput = document.createElement("input"); qtyInput.type="number"; qtyInput.value=item.qty; qtyInput.min=0; qtyInput.classList.add("qtyInput");
+    qtyInput.addEventListener("change", async()=>{ 
+      saveStateForUndo(); 
+      const val=Math.max(0,Number(qtyInput.value)); 
+      await updateDoc(doc(db,"inventory",item.id), {qty: val}); 
+      loadInventory(); 
+    });
+    const delBtn = document.createElement("button"); delBtn.textContent="Delete"; delBtn.classList.add("btn-red");
+    delBtn.onclick=async()=>{ saveStateForUndo(); await deleteDoc(doc(db,"inventory",item.id)); loadInventory(); }
+    span.appendChild(qtyInput); li.appendChild(span); li.appendChild(delBtn); invList.appendChild(li);
+  });
 }
 
-// Check low stock
-function checkCategoryLowStock() {
-const categories = ["CPU","GPU","RAM","Motherboard","Storage","PSU","Case","Extras"];
-categories.forEach(cat=>{
-const itemsInCategory = fullInventory.filter(i=>i.type===cat && i.qty>0);
-if(itemsInCategory.length<2){ console.warn(`⚠ Low stock in category: ${cat}`); }
-});
+// Populate Builder
+function populateBuilder(){
+  builderContainer.innerHTML="";
+  builderComponents.forEach(cat=>{
+    const div=document.createElement("div"); div.classList.add("builderGroup");
+    div.innerHTML=`<label>${cat}</label>`;
+    const select=document.createElement("select"); select.id=`select-${cat}`; select.multiple=true;
+    div.appendChild(select);
+
+    const subtotalDisplay=document.createElement("div"); subtotalDisplay.id=`subtotal-${cat}`; subtotalDisplay.classList.add("subtotal"); subtotalDisplay.textContent="Subtotal: €0";
+    div.appendChild(subtotalDisplay);
+
+    const selectedContainer=document.createElement("div"); selectedContainer.id=`selected-${cat}`; div.appendChild(selectedContainer);
+    builderContainer.appendChild(div);
+
+    fullInventory.filter(i=>i.type===cat).forEach(item=>{
+      const opt=document.createElement("option"); opt.value=JSON.stringify(item); opt.textContent=`${item.name} (€${item.price}) [${item.qty}]`;
+      if(item.qty===0) opt.disabled=true; select.appendChild(opt);
+    });
+
+    select.addEventListener("change", ()=>{
+      selectedContainer.innerHTML="";
+      Array.from(select.selectedOptions).forEach(opt=>{
+        const item=JSON.parse(opt.value);
+        const itemDiv=document.createElement("div"); itemDiv.classList.add("selectedItem");
+        itemDiv.innerHTML=`${item.name} (€${item.price}) x 
+          <button class="plusMinusBtn" onclick="changeQty('${item.id}',-1)">-</button>
+          <input type="number" min="1" max="${item.qty}" value="1" class="qtyInput" id="qty-${item.id}">
+          <button class="plusMinusBtn" onclick="changeQty('${item.id}',1)">+</button>`;
+        selectedContainer.appendChild(itemDiv);
+      });
+      calculateTotals();
+    });
+  });
 }
 
-// Populate dropdowns
-function populateDropdowns(){
-for(const cat in selects) selects[cat].innerHTML="";
-fullInventory.forEach(item=>{
-const opt = document.createElement("option");
-opt.value = JSON.stringify(item);
-opt.textContent = `${item.name} (€${item.price})`;
-if(selects[item.type]) selects[item.type].appendChild(opt);
-else if(item.type.toLowerCase() === "extras") selects.Extras.appendChild(opt);
-});
-Object.values(selects).forEach(sel=>sel.addEventListener("change", calculateTotals));
+// Quantity plus/minus
+window.changeQty=function(id,delta){
+  const input=document.getElementById(`qty-${id}`);
+  if(!input) return;
+  let val=Number(input.value)+delta;
+  val=Math.max(1, Math.min(val, Number(input.max)));
+  input.value=val;
+  calculateTotals();
 }
 
-// Add inventory
-document.getElementById("inventoryForm").addEventListener("submit",async e=>{
-e.preventDefault();
-const name = document.getElementById("name").value.trim();
-const type = document.getElementById("type").value.trim();
-const price = Number(document.getElementById("price").value);
-const qty = Number(document.getElementById("qty").value);
-
-const existing = fullInventory.find(i=>i.name.toLowerCase()===name.toLowerCase() && i.type.toLowerCase()===type.toLowerCase());
-if(existing){
-await updateDoc(doc(db,"inventory",existing.id), { qty: existing.qty + qty });
-alert(`Updated quantity for ${name}.`);
-} else {
-await addDoc(collection(db,"inventory"), { name, type, price, qty });
-alert("Item added!");
-}
-e.target.reset();
-loadInventory();
-});
-
-// Calculate totals for multi-select
+// Calculate Totals & Max Builds
 function calculateTotals(){
-let total = 0;
-for(const cat in selects){
-const selectedOptions = Array.from(selects[cat].selectedOptions);
-selectedOptions.forEach(option=>{
-const item = JSON.parse(option.value);
-const qty = Number(document.getElementById(`qty-${item.id}`)?.value) || 1;
-total += item.price * qty;
-});
-}
-document.getElementById("totalCost").textContent = total;
-const sell = Number(document.getElementById("sellPrice").value);
-if(sell>0){
-const profit = sell - total;
-document.getElementById("profit").textContent = profit;
-document.getElementById("profitPercent").textContent = ((profit/total)*100).toFixed(1);
-}
+  let total=0, maxBuilds=Infinity;
+  builderComponents.forEach(cat=>{
+    const select=document.getElementById(`select-${cat}`);
+    let catSubtotal=0, catMax=Infinity;
+    Array.from(select.selectedOptions).forEach(opt=>{
+      const item=JSON.parse(opt.value);
+      const qty=Number(document.getElementById(`qty-${item.id}`)?.value)||1;
+      catSubtotal+=item.price*qty;
+      const possible=Math.floor(item.qty/qty);
+      if(possible<catMax) catMax=possible;
+    });
+    document.getElementById(`subtotal-${cat}`).textContent=`Subtotal: €${catSubtotal}`;
+    total+=catSubtotal;
+    if(catMax<maxBuilds) maxBuilds=catMax;
+  });
+  document.getElementById("totalCost").textContent=total;
+  document.getElementById("maxBuilds").textContent=maxBuilds;
+
+  const sell=Number(document.getElementById("sellPrice").value);
+  if(sell>0){ const profit=sell-total; document.getElementById("profit").textContent=profit; document.getElementById("profitPercent").textContent=((profit/total)*100).toFixed(1);}
 }
 document.getElementById("sellPrice").addEventListener("input",calculateTotals);
 
-// Finalize build
-document.getElementById("finalizeBuild").addEventListener("click", async ()=>{
-let partsUsed = [];
-for(const cat in selects){
-const selectedOptions = Array.from(selects[cat].selectedOptions);
-for(const option of selectedOptions){
-const item = JSON.parse(option.value);
-const qty = Number(document.getElementById(`qty-${item.id}`)?.value) || 1;
-if(item.qty < qty){ alert(`${item.name} does not have enough stock!`); return; }
-partsUsed.push({ ...item, qtySelected: qty });
-}
-}
-for(const part of partsUsed){
-await updateDoc(doc(db,"inventory",part.id),{ qty: part.qty - part.qtySelected });
-}
-const total = Number(document.getElementById("totalCost").textContent);
-const sell = Number(document.getElementById("sellPrice").value);
-await addDoc(collection(db,"builds"),{ date:new Date().toLocaleString(), parts:partsUsed, cost: total, sellPrice: sell, profit: sell - total });
-alert("Build completed and saved!");
-loadInventory();
-loadBuildHistory();
+// Finalize Build
+document.getElementById("finalizeBuild").addEventListener("click", async()=>{
+  try{
+    saveStateForUndo();
+    let partsUsed=[];
+    for(const cat of builderComponents){
+      const select=document.getElementById(`select-${cat}`);
+      Array.from(select.selectedOptions).forEach(opt=>{
+        const item=JSON.parse(opt.value);
+        const qty=Number(document.getElementById(`qty-${item.id}`)?.value)||1;
+        if(qty>item.qty) throw `You don't have enough ${item.type}: ${item.name} (Available: ${item.qty})`;
+        partsUsed.push({...item, qtySelected: qty});
+      });
+    }
+    for(const part of partsUsed){ await updateDoc(doc(db,"inventory",part.id),{qty: part.qty-part.qtySelected}); }
+    const total=Number(document.getElementById("totalCost").textContent);
+    const sell=Number(document.getElementById("sellPrice").value);
+    await addDoc(collection(db,"builds"),{date:new Date().toLocaleString(),parts:partsUsed,cost:total,sellPrice:sell,profit:sell-total});
+    alert("Build completed and saved!");
+    loadInventory();
+  }catch(e){ alert(e); }
 });
 
-// Load build history
+// Load Build History
 async function loadBuildHistory(){
-const snap=await getDocs(collection(db,"builds"));
-buildHistory.innerHTML="";
-snap.forEach(d=>{
-const b=d.data();
-const li=document.createElement("li");
-li.innerHTML=`<strong>${b.date}</strong><br>Cost: €${b.cost} | Sold for: €${b.sellPrice}<br>Profit: €${b.profit}<br>Parts: ${b.parts.map(p=>p.name+" x"+p.qtySelected).join(", ")}`;
-buildHistory.appendChild(li);
-});
+  const snap=await getDocs(collection(db,"builds"));
+  buildHistory.innerHTML="";
+  snap.forEach(d=>{
+    const b=d.data();
+    const li=document.createElement("li");
+    li.innerHTML=`<strong>${b.date}</strong><br>Cost: €${b.cost} | Sold: €${b.sellPrice}<br>Profit: €${b.profit}<br>Parts: ${b.parts.map(p=>p.name+" x"+p.qtySelected).join(", ")}`;
+    buildHistory.appendChild(li);
+  });
 }
 
+// Add Inventory
+document.getElementById("inventoryForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const name=document.getElementById("name").value.trim();
+  const type=document.getElementById("type").value.trim();
+  const price=Number(document.getElementById("price").value);
+  const qty=Number(document.getElementById("qty").value);
+  const existing=fullInventory.find(i=>i.name.toLowerCase()===name.toLowerCase() && i.type.toLowerCase()===type.toLowerCase());
+  if(existing){ saveStateForUndo(); await updateDoc(doc(db,"inventory",existing.id),{qty:existing.qty+qty}); alert(`Updated quantity for ${name}`); }
+  else{ saveStateForUndo(); await addDoc(collection(db,"inventory"),{name,type,price,qty}); alert("Item added!"); }
+  e.target.reset(); loadInventory();
+});
+
+// Search & Sort
+document.getElementById("searchBar").addEventListener("input", updateInventoryDisplay);
+document.getElementById("sortSelect").addEventListener("change", updateInventoryDisplay);
+
+// Export/Import
+document.getElementById("exportCSV").onclick=()=>{ let csv="Name,Type,Price,Quantity\n"; fullInventory.forEach(i=>csv+=`${i.name},${i.type},${i.price},${i.qty}\n`); download("inventory.csv",csv); }
+document.getElementById("exportBuildCSV").onclick=async()=>{ const snap=await getDocs(collection(db,"builds")); let csv="Date,Cost,Sell Price,Profit,Parts\n"; snap.forEach(d=>{ const b=d.data(); csv+=`${b.date},${b.cost},${b.sellPrice},${b.profit},"${b.parts.map(p=>p.name+" x"+p.qtySelected).join("; ")}"\n`; }); download("builds.csv",csv); }
+document.getElementById("exportJSON").onclick=async()=>{ const snap=await getDocs(collection(db,"builds")); let builds=[]; snap.forEach(d=>builds.push({id:d.id,...d.data()})); const backup={inventory: fullInventory, builds}; const blob=new Blob([JSON.stringify(backup)],{type:"application/json"}); const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download="backup.json"; link.click(); }
+document.getElementById("importJSON").onclick=()=>{ document.getElementById("importFile").click(); }
+document.getElementById("importFile").addEventListener("change",async e=>{ 
+  const text=await e.target.files[0].text(); 
+  const backup=JSON.parse(text); 
+  for(const item of backup.inventory){
+    const existing = fullInventory.find(i=>i.id===item.id);
+    if(existing){
+      await updateDoc(doc(db,"inventory",item.id),item);
+    } else {
+      await addDoc(collection(db,"inventory"),item);
+    }
+  } 
+  alert("Backup imported!"); 
+  loadInventory(); 
+});
+
+// ---------- HELPER ----------
+function download(filename,text){ 
+  const blob=new Blob([text],{type:"text/csv"}); 
+  const link=document.createElement("a"); 
+  link.href = URL.createObjectURL(blob); 
+  link.download = filename; 
+  link.click(); 
+}
+
+// ---------- LOW STOCK ALERT ----------
+function checkLowStock(){
+  let alertMsg = "";
+  builderComponents.forEach(cat=>{
+    const catItems = fullInventory.filter(i=>i.type===cat);
+    const lowQty = catItems.some(i=>i.qty<=2);
+    if(lowQty) alertMsg += `Warning: Low stock for ${cat}!\n`;
+  });
+  if(alertMsg) alert(alertMsg);
+}
+
+// ---------- INITIAL LOAD ----------
 loadInventory();
-loadBuildHistory();
 </script>
 </body>
 </html>
